@@ -51,6 +51,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import static java.util.Arrays.copyOfRange;
@@ -101,6 +102,8 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate");
+
+        checkPermissions();
 
         setContentView(R.layout.activity_main);
 
@@ -248,7 +251,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 startService(intent);
         });
 
-        checkPermissions();
 
         mIntentFilter.addAction(TSDZBTService.SERVICE_STARTED_BROADCAST);
         mIntentFilter.addAction(TSDZBTService.SERVICE_STOPPED_BROADCAST);
@@ -439,9 +441,23 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+//        if (requestCode == APP_PERMISSION_REQUEST) {
+//            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+//                    != PackageManager.PERMISSION_GRANTED) {
+//                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+//                builder.setTitle("Permission request failed");
+//                builder.setMessage("Application will end.");
+//                builder.setPositiveButton(android.R.string.ok, null);
+//                builder.setOnDismissListener((DialogInterface) -> finish());
+//                builder.show();
+//            }
+//        }
+////
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == APP_PERMISSION_REQUEST) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "permission granted", Toast.LENGTH_LONG).show();
+            } else {
                 final AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle("Permission request failed");
                 builder.setMessage("Application will end.");
@@ -451,6 +467,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             }
         }
     }
+
 
     private boolean checkDevice() {
         String mac = MyApp.getPreferences().getString(KEY_DEVICE_MAC, null);
@@ -603,7 +620,56 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                     new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
                     APP_PERMISSION_REQUEST);
         }
+
+//        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+//                != PackageManager.PERMISSION_GRANTED) {
+//            ActivityCompat.requestPermissions(this,
+//                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+//                    APP_PERMISSION_REQUEST);
+//        }
+
+//        String[] bluetoothPermissions = getRequiredPermissions();
+//        for (int i = 0; i < bluetoothPermissions.length; i++) {
+//            if (ContextCompat.checkSelfPermission(this, bluetoothPermissions[i])
+//                    != PackageManager.PERMISSION_GRANTED) {
+//                ActivityCompat.requestPermissions(this,
+//                        new String[]{bluetoothPermissions[i]},
+//                        APP_PERMISSION_REQUEST);
+//            }
+//        }
+
+//        requestPermissions(getRequiredPermissions(), APP_PERMISSION_REQUEST);
+//
+//
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.BLUETOOTH_SCAN},
+                    APP_PERMISSION_REQUEST);
+        }
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.BLUETOOTH_CONNECT},
+                    APP_PERMISSION_REQUEST);
+        }
     }
+
+    private String[] getRequiredPermissions() {
+
+        //ArrayList<String> permissions = new ArrayList<String>();
+        //permissions.add(mystring); //this adds an element to the list.
+
+
+        int targetSdkVersion = getApplicationInfo().targetSdkVersion;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && targetSdkVersion >= Build.VERSION_CODES.S) {
+            return new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT};
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && targetSdkVersion >= Build.VERSION_CODES.Q) {
+            return new String[]{Manifest.permission.ACCESS_FINE_LOCATION};
+        } else return new String[]{Manifest.permission.ACCESS_COARSE_LOCATION};
+    }
+
 
     // Version packet format is "%s|%s|%d".
     // First string is the ESP32 Main FW version, second is ESP32 OTA FW version and last integer
