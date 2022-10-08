@@ -167,6 +167,16 @@
     <string name="read_cfg_error">Configuration cannot be readed</string>
     <string name="esp32_cfg_error">ESP32 data wrong\nAndorid app and ESP32 FW misaligned?</string>
 
+    <string name="opentracks_header_title">OpenTracks Repo:</string>
+    <string name="opentracks_fdroid">F-Droid</string>
+    <string name="opentracks_fdroid_package">de.dennisguse.opentracks</string>
+    <string name="opentracks_google">GooglePlay</string>
+    <string name="opentracks_google_package">de.dennisguse.opentracks.playStore</string>
+    <string name="opentracks_debug">Debug</string>
+    <string name="opentracks_debug_package">de.dennisguse.opentracks.debug</string>
+    <string name="opentracks_nightly">Nighly</string>
+    <string name="opentracks_nightly_package">de.dennisguse.opentracks.nightly</string>
+
     <string name="pairing_error">Pairing failed</string>
     <string name="pairing_done">Pairing done</string>
 

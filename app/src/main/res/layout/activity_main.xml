@@ -124,24 +124,32 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:layout_weight="1">
-                <TextView
-                    android:id="@+id/dummy"
+                <ImageView
+                    android:id="@+id/openTracksIV"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textSize="28sp"
+                    android:layout_height="match_parent"
                     android:gravity="center"
-                    android:text="" />
+                    android:src="@mipmap/opentracks_start_icon" />
             </LinearLayout>
 
         </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
+<!--    <com.google.android.material.floatingactionbutton.FloatingActionButton-->
+<!--        android:id="@+id/fab"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_gravity="bottom|end"-->
+<!--        android:layout_margin="@dimen/fab_margin"-->
+<!--        app:srcCompat="@android:drawable/ic_media_play" />-->
+
+    <spider65.ebike.tsdz2_esp32.MovableFloatingActionButton
         android:id="@+id/fab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="@dimen/fab_margin"
         app:srcCompat="@android:drawable/ic_media_play" />
+
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

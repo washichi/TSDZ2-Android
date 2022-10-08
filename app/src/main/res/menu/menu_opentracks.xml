@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item  android:id="@+id/opentracks_fdroid"
+        android:title="@string/opentracks_fdroid"/>
+    <item  android:id="@+id/opentracks_google"
+        android:title="@string/opentracks_google"/>
+    <item  android:id="@+id/opentracks_debug"
+        android:title="@string/opentracks_debug"/>
+    <item  android:id="@+id/opentracks_nightly"
+        android:title="@string/opentracks_nightly"/>
+</menu>

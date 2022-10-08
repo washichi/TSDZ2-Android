@@ -6,11 +6,14 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.os.Build;
 import android.os.Bundle;
 
@@ -53,6 +56,7 @@ import android.widget.Toast;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import static java.util.Arrays.copyOfRange;
 import static spider65.ebike.tsdz2_esp32.TSDZConst.CMD_GET_APP_VERSION;
@@ -72,7 +76,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private MainPagerAdapter mainPagerAdapter;
 
     private static final int REQUEST_ENABLE_BLUETOOTH = 0;
-    private static final int APP_PERMISSION_REQUEST = 1;
+    private static final int APP_PERMISSION_REQUEST = 42;//1;
 
     IntentFilter mIntentFilter = new IntentFilter();
 
@@ -85,6 +89,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private TextView statusTV;
     private ImageView brakeIV;
     private ImageView streetModeIV;
+    private ImageView openTracksIV;
 
     private GestureDetector gestureDetector;
 
@@ -97,15 +102,18 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private BTStatus btStatus = BTStatus.Disconnected;
     private boolean commError = false;
 
+    private boolean s_opentracksRecording = false; //TODO: add to status? or not?
+    private String opentracksPackageName;
+
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate");
 
-        checkPermissions();
-
         setContentView(R.layout.activity_main);
+        checkPermissions();
+        opentracksPackageName = getResources().getString(R.string.opentracks_fdroid_package);
 
         boolean screenOn = MyApp.getPreferences().getBoolean(KEY_SCREEN_ON, false);
         if (screenOn)
@@ -231,6 +239,36 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         registerForContextMenu(modeLevelTV);
         streetModeIV = findViewById(R.id.streetModeIV);
         registerForContextMenu(streetModeIV);
+        openTracksIV = findViewById(R.id.openTracksIV);
+        registerForContextMenu(openTracksIV);
+        openTracksIV.setOnClickListener((View) ->{
+            Intent intent = new Intent();
+            if(s_opentracksRecording == false){
+                intent.setComponent(new ComponentName(opentracksPackageName, "de.dennisguse.opentracks.publicapi.StartRecording"));
+                Bundle b = new Bundle();
+                b.putInt("TRACK_CATEGORY", 3); //Your id
+                intent.putExtras(b); //Put your id to your next Intent
+
+            }
+            else{
+                intent.setComponent(new ComponentName(opentracksPackageName, "de.dennisguse.opentracks.publicapi.StopRecording"));
+            }
+
+            try{
+                startActivity(intent);
+                s_opentracksRecording = !s_opentracksRecording;
+                if(s_opentracksRecording){
+                    openTracksIV.setImageResource(R.mipmap.opentracks_stop_icon);
+                }
+                else{
+                    openTracksIV.setImageResource(R.mipmap.opentracks_start_icon);
+                }
+            }
+            catch(Exception e){
+                Toast.makeText(this, "Please install OpenTracks to start GPS log", Toast.LENGTH_LONG).show();
+                return;
+            }
+        });
 
         fabButton = findViewById(R.id.fab);
         fabButton.setOnClickListener((View) -> {
@@ -310,7 +348,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         }
         return true;
     }
-	
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         Intent intent;
@@ -364,6 +402,17 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     @Override
     public void onCreateContextMenu (ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+
+        //display context menus that are visible without bike connection
+        if(v.getId() == R.id.openTracksIV){
+            // create context menu for OpenTracks Icon long press
+            MenuInflater inflater;
+            inflater = getMenuInflater();
+            inflater.inflate(R.menu.menu_opentracks, menu);
+            menu.setHeaderTitle(getResources().getString(R.string.opentracks_header_title));
+        }
+
+        //check bike connection
         TSDZBTService service = TSDZBTService.getBluetoothService();
         if (service == null || service.getConnectionStatus() != TSDZBTService.ConnectionState.CONNECTED)
             return;
@@ -387,6 +436,29 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     @Override
     public boolean onContextItemSelected(MenuItem item){
+
+        //display context menus that are visible without bike connection
+        switch (item.getItemId()) {
+            case R.id.opentracks_fdroid:
+                opentracksPackageName = getResources().getString(R.string.opentracks_fdroid_package);
+                Toast.makeText(getApplicationContext(), "Opentracks repo set to " + getResources().getString(R.string.opentracks_fdroid), Toast.LENGTH_SHORT).show();
+                break;
+            case R.id.opentracks_google:
+                opentracksPackageName = getResources().getString(R.string.opentracks_google_package);
+                Toast.makeText(getApplicationContext(), "Opentracks repo set to " + getResources().getString(R.string.opentracks_google), Toast.LENGTH_SHORT).show();
+                break;
+            case R.id.opentracks_debug:
+                opentracksPackageName = getResources().getString(R.string.opentracks_debug_package);
+                Toast.makeText(getApplicationContext(), "Opentracks repo set to " + getResources().getString(R.string.opentracks_debug), Toast.LENGTH_SHORT).show();
+                break;
+            case R.id.opentracks_nightly:
+                opentracksPackageName = getResources().getString(R.string.opentracks_nightly_package);
+                Toast.makeText(getApplicationContext(), "Opentracks repo set to " + getResources().getString(R.string.opentracks_nightly), Toast.LENGTH_SHORT).show();
+                break;
+            default:
+                return false;
+        }
+
         TSDZBTService service = TSDZBTService.getBluetoothService();
         if (service == null || service.getConnectionStatus() != TSDZBTService.ConnectionState.CONNECTED)
             return false;
@@ -418,9 +490,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             case R.id.assist_cadence:
                 service.writeCommand(new byte[] {TSDZConst.CMD_ASSIST_MODE, TSDZConst.ASSIST_MODE_FORCE_CADENCE});
                 break;
-            default:
-                return false;
-        }
+        default:
+            return false;
+    }
         return true;
     }
 
@@ -441,23 +513,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-//        if (requestCode == APP_PERMISSION_REQUEST) {
-//            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-//                    != PackageManager.PERMISSION_GRANTED) {
-//                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-//                builder.setTitle("Permission request failed");
-//                builder.setMessage("Application will end.");
-//                builder.setPositiveButton(android.R.string.ok, null);
-//                builder.setOnDismissListener((DialogInterface) -> finish());
-//                builder.show();
-//            }
-//        }
-////
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == APP_PERMISSION_REQUEST) {
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "permission granted", Toast.LENGTH_LONG).show();
-            } else {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
                 final AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle("Permission request failed");
                 builder.setMessage("Application will end.");
@@ -465,8 +523,10 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 builder.setOnDismissListener((DialogInterface) -> finish());
                 builder.show();
             }
-        }
     }
+
+
+
 
 
     private boolean checkDevice() {
@@ -613,62 +673,19 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     }
 
     private void checkPermissions() {
-        // Make sure we have access coarse location enabled, if not, prompt the user to enable it
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                    APP_PERMISSION_REQUEST);
+        String[] permissions = {Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.ACCESS_FINE_LOCATION};
+
+        for (int i = 0; i < permissions.length; i++) {
+            if (ContextCompat.checkSelfPermission(this, permissions[i])
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{permissions[i]},
+                        APP_PERMISSION_REQUEST);
+            }
         }
 
-//        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-//                != PackageManager.PERMISSION_GRANTED) {
-//            ActivityCompat.requestPermissions(this,
-//                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-//                    APP_PERMISSION_REQUEST);
-//        }
-
-//        String[] bluetoothPermissions = getRequiredPermissions();
-//        for (int i = 0; i < bluetoothPermissions.length; i++) {
-//            if (ContextCompat.checkSelfPermission(this, bluetoothPermissions[i])
-//                    != PackageManager.PERMISSION_GRANTED) {
-//                ActivityCompat.requestPermissions(this,
-//                        new String[]{bluetoothPermissions[i]},
-//                        APP_PERMISSION_REQUEST);
-//            }
-//        }
-
-//        requestPermissions(getRequiredPermissions(), APP_PERMISSION_REQUEST);
-//
-//
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.BLUETOOTH_SCAN},
-                    APP_PERMISSION_REQUEST);
-        }
-
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.BLUETOOTH_CONNECT},
-                    APP_PERMISSION_REQUEST);
-        }
     }
 
-    private String[] getRequiredPermissions() {
-
-        //ArrayList<String> permissions = new ArrayList<String>();
-        //permissions.add(mystring); //this adds an element to the list.
-
-
-        int targetSdkVersion = getApplicationInfo().targetSdkVersion;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && targetSdkVersion >= Build.VERSION_CODES.S) {
-            return new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT};
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && targetSdkVersion >= Build.VERSION_CODES.Q) {
-            return new String[]{Manifest.permission.ACCESS_FINE_LOCATION};
-        } else return new String[]{Manifest.permission.ACCESS_COARSE_LOCATION};
-    }
 
 
     // Version packet format is "%s|%s|%d".

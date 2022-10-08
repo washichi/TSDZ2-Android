@@ -150,7 +150,7 @@ public class TSDZBTService extends Service {
 
         // Create notification default intent.
         Intent intent = new Intent();
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
 
         String channelId = getString(R.string.app_name);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -173,7 +173,7 @@ public class TSDZBTService extends Service {
         // Add Disconnect button intent in notification.
         Intent stopIntent = new Intent(this, TSDZBTService.class);
         stopIntent.setAction(ACTION_STOP_FOREGROUND_SERVICE);
-        PendingIntent pendingStopIntent = PendingIntent.getService(this, 0, stopIntent, 0);
+        PendingIntent pendingStopIntent = PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Action prevAction = new NotificationCompat.Action(android.R.drawable.ic_media_pause, "Disconnect", pendingStopIntent);
         builder.addAction(prevAction);
 
