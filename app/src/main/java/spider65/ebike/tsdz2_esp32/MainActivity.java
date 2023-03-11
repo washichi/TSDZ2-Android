@@ -2,8 +2,8 @@ package spider65.ebike.tsdz2_esp32;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -20,7 +20,10 @@ import android.os.Bundle;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.tabs.TabLayout;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.Toolbar;
@@ -75,12 +78,10 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private  FloatingActionButton fabButton;
     private MainPagerAdapter mainPagerAdapter;
 
-    private static final int REQUEST_ENABLE_BLUETOOTH = 0;
-    private static final int APP_PERMISSION_REQUEST = 42;//1;
+    private static final int APP_PERMISSION_REQUEST = 1;
 
     IntentFilter mIntentFilter = new IntentFilter();
 
-    private ViewPager viewPager;
     private byte[] lastStatusData = new byte[STATUS_ADV_SIZE];
 
     private final TSDZ_Status status = new TSDZ_Status();
@@ -122,7 +123,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         mainPagerAdapter = new MainPagerAdapter(this, getSupportFragmentManager(), status);
-        viewPager = findViewById(R.id.view_pager);
+        ViewPager viewPager = findViewById(R.id.view_pager);
         viewPager.setAdapter(mainPagerAdapter);
         viewPager.setOnTouchListener(this);
 
@@ -272,7 +273,8 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
         fabButton = findViewById(R.id.fab);
         fabButton.setOnClickListener((View) -> {
-            if (!checkDevice()) {
+            String mac = MyApp.getPreferences().getString(KEY_DEVICE_MAC, null);
+            if (mac == null) {
                 Toast.makeText(this, "Please select the bluetooth device to connect", Toast.LENGTH_LONG).show();
                 return;
             }
@@ -281,7 +283,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 intent.setAction(TSDZBTService.ACTION_STOP_FOREGROUND_SERVICE);
             } else{
                 intent.setAction(TSDZBTService.ACTION_START_FOREGROUND_SERVICE);
-                intent.putExtra(TSDZBTService.ADDRESS_EXTRA, MyApp.getPreferences().getString(KEY_DEVICE_MAC, null));
+                intent.putExtra(TSDZBTService.ADDRESS_EXTRA, mac);
             }
             if (Build.VERSION.SDK_INT >= 26)
                 startForegroundService(intent);
@@ -497,49 +499,28 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode,resultCode,data);
-        if (requestCode == REQUEST_ENABLE_BLUETOOTH) {
-            if (resultCode != RESULT_OK) {
-                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setTitle("Bluetooth activation failed");
-                builder.setMessage("Since bluetooth is not active, this app will not be able to run.");
-                builder.setPositiveButton(android.R.string.ok, null);
-                builder.setOnDismissListener((DialogInterface) -> finish());
-                builder.show();
-            }
-        }
-    }
-
-    @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setTitle("Permission request failed");
-                builder.setMessage("Application will end.");
-                builder.setPositiveButton(android.R.string.ok, null);
-                builder.setOnDismissListener((DialogInterface) -> finish());
-                builder.show();
+        if (requestCode == APP_PERMISSION_REQUEST) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if ((ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED)
+                        && (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED)
+                        && (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED))
+                    return;
+            } else {
+                if ((ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+                        && (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED))
+                    return;
             }
-    }
 
-
-
-
-
-    private boolean checkDevice() {
-        String mac = MyApp.getPreferences().getString(KEY_DEVICE_MAC, null);
-        if (mac != null) {
-            final BluetoothManager btManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-            final BluetoothAdapter btAdapter = btManager.getAdapter();
-            BluetoothDevice selectedDevice = btAdapter.getRemoteDevice(mac);
-            return selectedDevice.getBondState() == BluetoothDevice.BOND_BONDED;
+            final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Permission request failed");
+            builder.setMessage("Application will end.");
+            builder.setPositiveButton(android.R.string.ok, null);
+            builder.setOnDismissListener((DialogInterface) -> finish());
+            builder.show();
         }
-        return false;
     }
-
 
     private boolean s_brake;
     private short s_status = 0;
@@ -663,24 +644,51 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         updateStatusIcons();
     }
 
+
     private void checkBT() {
+        ActivityResultLauncher<Intent> activityResultLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() != Activity.RESULT_OK) {
+                    final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Bluetooth activation failed");
+                    builder.setMessage("Since bluetooth is not active, this app will not be able to run.");
+                    builder.setPositiveButton(android.R.string.ok, null);
+                    builder.setOnDismissListener((DialogInterface) -> finish());
+                    builder.show();
+                }
+            });
+
         BluetoothManager btManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         BluetoothAdapter btAdapter = btManager.getAdapter();
         if (btAdapter != null && !btAdapter.isEnabled()) {
             Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableIntent, REQUEST_ENABLE_BLUETOOTH);
+            activityResultLauncher.launch(enableIntent);
         }
     }
 
-    private void checkPermissions() {
-        String[] permissions = {Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.ACCESS_FINE_LOCATION};
+    private static final String[] BLE_PERMISSIONS = new String[]{
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+    };
 
-        for (int i = 0; i < permissions.length; i++) {
-            if (ContextCompat.checkSelfPermission(this, permissions[i])
-                    != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{permissions[i]},
-                        APP_PERMISSION_REQUEST);
+    @RequiresApi(api = Build.VERSION_CODES.S)
+    private static final String[] ANDROID_12_BLE_PERMISSIONS = new String[]{
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.ACCESS_FINE_LOCATION
+    };
+
+    private void checkPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if ((ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED)
+                    || (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED)
+                    || (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED))
+                ActivityCompat.requestPermissions(this, ANDROID_12_BLE_PERMISSIONS, APP_PERMISSION_REQUEST);
+        } else {
+            if ((ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+                    || (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
+                ActivityCompat.requestPermissions(this, BLE_PERMISSIONS, APP_PERMISSION_REQUEST);
             }
         }
 
