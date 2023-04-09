@@ -457,8 +457,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 opentracksPackageName = getResources().getString(R.string.opentracks_nightly_package);
                 Toast.makeText(getApplicationContext(), "Opentracks repo set to " + getResources().getString(R.string.opentracks_nightly), Toast.LENGTH_SHORT).show();
                 break;
-            default:
-                return false;
         }
 
         TSDZBTService service = TSDZBTService.getBluetoothService();
