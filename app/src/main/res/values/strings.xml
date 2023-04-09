@@ -159,6 +159,7 @@
     <string name="torque_smooth_max">Max ADC diff. threshold</string>
     <string name="threshold">Threshold</string>
     <string name="street_mode">Street Mode</string>
+    <string name="street_mode_startup_enable">Street mode on startup</string>
     <string name="cruise_mode_enabled">Cruise mode enabled</string>
     <string name="street_mode_throttle">Throttle enabled</string>
     <string name="wheel_perimeter">Wheel perim. (mm)</string>
